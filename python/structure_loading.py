@@ -5,12 +5,7 @@ import pickle
 
 import numpy as np
 from matplotlib.path import Path
-
-def find_prefixed_file(directory, prefix):
-	for i in os.listdir(directory):
-		if prefix in i:
-			return os.path.join(directory, i)
-	return None
+from file_utils import find_prefixed_file
 
 def load_dicom_imageheaders(directory, siUID):
 	#Loop over dicom files in directory
@@ -50,8 +45,6 @@ def read_structures(rtssheader, imageheaders):
 	dim_min = np.array([0, 0, 0, 1])
 	dim_max = np.array([int(imageheaders[0].Columns)-1, int(imageheaders[1].Rows)-1, len(imageheaders)-1, 1])
 
-	template = np.zeros([imageheaders[0].Columns, imageheaders[1].Rows, len(imageheaders)])
-
 	roi_contour_sequence = rtssheader.ROIContourSequence
 	roi_structureset_sequence = rtssheader.StructureSetROISequence
 
@@ -64,6 +57,8 @@ def read_structures(rtssheader, imageheaders):
 	}
 
 	for i in range(nrois):
+		template = np.zeros([imageheaders[0].Columns, imageheaders[1].Rows, len(imageheaders)], 
+							dtype=bool)
 		roi_contour = roi_contour_sequence[i]
 		roi_number = roi_contour.ReferencedROINumber
 		roi_structureset = next((x for x in roi_structureset_sequence if x.ROINumber == roi_number), None)
