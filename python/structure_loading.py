@@ -1,6 +1,7 @@
 import pydicom
 import os
 import re
+import pickle
 
 import numpy as np
 from matplotlib.path import Path
@@ -9,6 +10,7 @@ def find_prefixed_file(directory, prefix):
 	for i in os.listdir(directory):
 		if prefix in i:
 			return os.path.join(directory, i)
+	return None
 
 def load_dicom_imageheaders(directory, siUID):
 	#Loop over dicom files in directory
@@ -61,8 +63,7 @@ def read_structures(rtssheader, imageheaders):
 		'Segmentation': [None] * nrois
 	}
 
-	#for i in range(nrois):
-	for i in range(2, 3):
+	for i in range(nrois):
 		roi_contour = roi_contour_sequence[i]
 		roi_number = roi_contour.ReferencedROINumber
 		roi_structureset = next((x for x in roi_structureset_sequence if x.ROINumber == roi_number), None)
@@ -127,10 +128,10 @@ def read_structures(rtssheader, imageheaders):
 
 	return contours
 
-def load_structures(directory, rts_prefix='RTSTRUCT', rtd_prefix='RTDOSE', ct_prefix='CT'):
-	rtstruct_file = find_prefixed_file(directory, rts_prefix)
+def load_structures(directory, struct_prefix='RTSTRUCT', dose_prefix='RTDOSE', ct_prefix='CT'):
+	rtstruct_file = find_prefixed_file(directory, struct_prefix)
 	ct_file = find_prefixed_file(directory, ct_prefix)
-	rtdose_file = find_prefixed_file(directory, rtd_prefix)
+	rtdose_file = find_prefixed_file(directory, dose_prefix)
 
 	rtssheader = pydicom.dcmread(rtstruct_file)
 	ct_info = pydicom.dcmread(ct_file)
@@ -152,4 +153,9 @@ def load_structures(directory, rts_prefix='RTSTRUCT', rtd_prefix='RTDOSE', ct_pr
 
 
 if __name__=='__main__':
-	load_structures('../data/AA/clinical')
+	contours = load_structures('../data/AA/clinical')
+	for i in contours['ROIName']:
+		print(i)
+	outfile = open('../data/AA/contours.pickle', 'wb')
+	pickle.dump(contours, outfile)
+	outfile.close()
