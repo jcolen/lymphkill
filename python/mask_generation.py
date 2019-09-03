@@ -36,12 +36,15 @@ def get_conversion_grids(ct_info, dose_info, dim_vol, dim_dos):
 	corner_d = np.array([dose_info.ImagePositionPatient])
 	corner_v = np.array([ct_info.ImagePositionPatient])
 
-	posd = np.transpose(np.array(np.meshgrid(
+	x, y, z = np.meshgrid(
 		np.arange(dim_dos[0]),
 		np.arange(dim_dos[1]),
-		np.arange(dim_dos[2]))), (1, 2, 3, 0))
-	
-	posv = (corner_d - corner_v + posd * dim_voxd) / dim_voxv
+		np.arange(dim_dos[2]))
+		
+	posd = np.transpose(np.array([x, y, z]), (1, 2, 3, 0))
+	yxz = np.transpose(np.array([y, x, z]), (1, 2, 3, 0))
+
+	posv = (corner_d - corner_v + yxz * dim_voxd) / dim_voxv
 	posv = posv.astype(int)
 
 	valid_voxel = np.logical_and(posv[:,:,:,0] >= 0, posv[:,:,:,1] >= 0)
@@ -84,7 +87,7 @@ def mask_generation(
 	ct_info = get_first_CT_frame(ct_infos)
 
 	dim_vol = np.array([ct_info.Rows, ct_info.Columns, len(ct_infos)])
-	dim_dos = np.array([dose_info.Columns, dose_info.Rows, dose_info.NumberOfFrames])
+	dim_dos = np.array([dose_info.Rows, dose_info.Columns, dose_info.NumberOfFrames])
 
 	print(dim_dos, dim_vol)
 
@@ -112,7 +115,6 @@ def mask_generation(
 		mdict['Mask'] = np.zeros(dim_dos.prod(), dtype=bool)
 		mdict['Mask'][posd] = seg[posv]
 		mdict['Mask'] = mdict['Mask'].reshape(dim_dos)
-		print(np.sum(mdict['Mask']))
 
 		mdict['LayerSize'] = layer_size(mdict['Mask'])
 		masks.append(mdict)
@@ -152,4 +154,3 @@ if __name__=='__main__':
 	masks = mask_generation(contours, ct_infos, dose_info)
 	with open('../data/AA/masks.pickle', 'wb') as outfile:
 		pickle.dump(masks, outfile)
-	implay(masks[0]['Mask'].astype(int))

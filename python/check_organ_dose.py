@@ -9,16 +9,14 @@ def load_rtdose_files(files):
 	voxelsize = None
 	for i, fname in enumerate(files):
 		data = pydicom.dcmread(fname)
-		dosegrids.append(data.pixel_array.astype(float))
-		dosegrids[i] *= data.DoseGridScaling
-	
+		dosegrids.append((data.pixel_array * data.DoseGridScaling).astype(float))
+
 		voxelsize = data.PixelSpacing[0] * data.PixelSpacing[1] * data.SliceThickness
 	
 	voxelsize /= 1000. #Rescale from mm^3 to cm^3
 	return dosegrids, voxelsize
 
 def check_organ_dose(mask, dosegrid, voxelsize, dosechecks=[5, 10, 15, 20]):
-	print(np.max(dosegrid))
 	dosemask = dosegrid[mask['Mask']]
 	maxdose = np.max(dosemask)
 	meandose = np.sum(dosemask) / np.sum(mask['Mask'])
@@ -36,6 +34,15 @@ def check_all_organs(masks, dosegrid, voxelsize, dosechecks=[5, 10, 15, 20]):
 		for i in dv:
 			outstr += ',%g' % (i / vl)
 		print(outstr)
+	mx = np.max(dosegrid)
+	mn = np.sum(dosegrid) / np.sum(dosegrid.astype(bool))
+	vl = np.sum(dosegrid.astype(bool)) * voxelsize
+	itd = mn * vl
+	dv = [np.sum(dosegrid >= j) * voxelsize for j in dosechecks]
+	outstr = '%20s,%g,%g,%g,%g' % ('ALL', mx, mn, vl, itd)
+	for i in dv:
+		outstr += ',%g' % (i / vl)
+	print(outstr)
 
 if __name__=='__main__':
 	directory = '../data/AA'
@@ -47,4 +54,4 @@ if __name__=='__main__':
 	with open('../data/AA/masks.pickle', 'rb') as infile:
 		masks = pickle.load(infile)
 	
-	check_all_organs(masks, np.sum(np.array(dosegrids), axis=0).transpose(2, 1, 0), voxelsize)
+	check_all_organs(masks, np.sum(np.array(dosegrids), axis=0).transpose(1, 2, 0), voxelsize)
