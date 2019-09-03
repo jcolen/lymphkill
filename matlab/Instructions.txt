@@ -1,0 +1,224 @@
+Instructions for running Lymphocyte kill simulations
+----------------------------------------------------
+
+The simulation is performed in 4 main steps. They are, in order:
+1. Loading in organ contours
+2. Generating masks
+3. Simulating blood dose
+4. Estimating kill
+
+The files required to execute these steps are located at /nv/vol141/phys_nrf/Jonathan/LymphKill
+They can be copied to your local directory (let's assume it's at ~/directory/ using:
+
+cp /nv/vol141/phys_nrf/Jonathan/LymphKill/*.m ~/directory/
+cp /nv/vol141/phys_nrf/Jonathan/LymphKill/*.sh ~/directory/
+cp /nv/vol141/phys_nrf/Jonathan/LymphKill/*.slurm ~/directory/
+
+0. SLURM basics
+---------------
+
+Each step in this guide requires execution of a bash script. This normally requires the user to leave the terminal open until the script completes. This can take a long time, especially for many patients, so it is useful to submit these scripts as batch jobs for Rivanna to execute.
+
+In order for a command to be submitted as a batch job, it must be included in a SLURM file. An example SLURM file is shown below. When using this, make sure to replace <script_name> and <your_email_address> in the header.
+
+#!/bin/bash
+#SBATCH --time=1-00:00:00
+#SBATCH --output=<script_name>.out
+#SBATCH --error=<script_name>.err
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=<your_email_address>
+#SBATCH --account=phys_nrf
+#SBATCH --partition=standard
+
+#SBATCH --mem=30000
+
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+
+#SBATCH --tasks=1
+
+<bash commands for script>
+
+Assuming this file is saved as <script_name>.slurm, it can be submitted with:
+
+sbatch <script_name>.slurm
+
+You can see the status at anytime by running (assuming your email address is mst3k@virginia.edu)
+
+squeue -u mst3k
+
+Any of the command sequences below can be put into a SLURM file and executed on Rivanna's cores. If you are modifying an existing SLURM file, make sure to comment out all previous lines (Put # at the beginning) or delete them if you do not want to re-run them
+
+1. Loading in organ contours
+----------------------------
+
+The patient's planning data should be unzipped and placed in a folder. We will assume the directory structure is as follows, for a patient named <PI> (for Patient Initials).
+
+LymphKill/                  Contains all of the scripts to be run
+    <PI>/                   Will contain all patient info and generated files
+        clinical/           Contains all planning data for the patient
+            CT Files
+            RTDOSE Files
+            RTPLAN File
+            RTSTRUCT File
+
+The organ information can be loaded in by executing the following command from the top level LymphKill directory:
+
+./loadStructures.sh <PI>/clinical/<RTSTRUCT_filename>.dcm <PI>/clinical <PI>/<PI>_organs.mat <PI>/clinical/<First_CT_filename>.dcm <PI>/clinical/<First_RTDOSE_filename>.dcm <PI>/<PI>_dicom_info.mat
+
+This line can be added to loadMultiple.slurm and submitted as a batch job.
+
+2. Generating Masks
+-------------------
+
+The next step is generating the masks structure that will be used in the simulation. Doing this requires a masks input file, which in turn requires knowledge of the organs that were loaded in during Step 1. For a list of contoured organs, run the command:
+
+./listContouredOrgans.sh <PI>/<PI>organs.mat
+
+This will produce an output of the form:
+
+1 1a iso (Acqsim)
+2 Other_Organs
+3 Lung Total- ITV
+4 aorta_CA
+5 PA_CA
+6 thoracic spine_CA
+7 VC_CA
+8 External
+9 CT MARK
+10 ITV
+11 PTV
+12 Tracheoboronchial Tree
+13 Brachial Plexus R
+14 Great Vessels
+15 Tracheobronchial Tree 2cm
+16 Trachea
+17 TBCouch_ex
+18 Lung _Rt
+19 Lung_Lt
+20 Heart
+21 Esophagus
+22 Cord
+23 ROI_1
+24 Chestwall_Rt
+25 ext - 0.5
+26 skin
+
+The masks input file MUST be located in the <PI> directory and MUST be called <PI>_mask_input.txt.
+It will have the following form (include the header line on the first line of the file):
+
+Index GV Static CO
+2 0 0 -1
+3 0 0 0.025000
+4 1 0 1.000000
+5 1 0 1.000000
+6 0 1 0.000000
+7 1 0 1.000000
+
+The first column is the Index - this is the number to the right of the organ you desire to use in the simulation. The second column is 1 if the organ is a great vessel, 0 otherwise. The third column is 1 if the organ has stationary blood flow (e.g. Thoracic Spine). The fourth column is the cardiac output for that organ.
+
+If you are including OtherOrgans in your simulation, its cardiac output column should be set to -1. This will tell later programs to calculate its cardiac output based on how much is left over. It will also tell later programs to remove any voxels from its mask that are repeated in different organs.
+
+So this example here will contour Other_Organs (Index 2, CO -1), Lung Total-ITV (Index 3, CO 0.025 or 2.5 %), aorta_CA, PA_CA, thoracic spine_CA (note Stationary is 1), and VC_CA. aorta_CA, PA_CA, and VC_CA are all great vessels, so their GV column is 1 and their CO is 1.0, or 100%.
+
+At this point your top level file structure should look like this:
+
+LymphKill/
+    <PI>/
+        <PI>_organs.mat
+        <PI>_dicom_info.mat
+        <PI>_mask_input.txt
+        clinical/
+            CT Files
+            RTDOSE Files
+            RTPLAN File
+            RTSTRUCT File
+
+The masks can now be generated by executing the following command:
+
+./mask_generation.sh <PI> <PI>_organs.mat <PI>_dicom_info.mat <PI>_masks.mat
+
+Examples of this command can be seen in mask_generation.slurm
+
+3. Simulating blood dose
+------------------------
+
+The next step is to simulate the blood dose. This is the most time consuming step. A good rule of thumb is that it will take around an hour to simulate a patient (many patients take less than this though).
+
+In order to do this you will need to get the beam on time for your treatment plan. You will also need to know whether it is gated and how many fractions it is separated into. The beam on time can be found by running:
+
+./runGetMU.sh <PI>/clinical/<RTPLAN_file>.dcm
+
+The output will look something like:
+
+Total MU: 2159
+Active Beam: 2
+Time on Per Beam (arc-2400): 26.987500
+Time on Per Beam (arc-1400): 46.264286
+Time on Per Beam (arc-600): 107.950000
+
+You can choose the beam on time for the dose rate that matches your plan. You will also need to create a list of the RTDOSE filenames (or RD filenames, if that's how they're named). This can be done by executing the following from the top level directory:
+
+ls <PI>/clinical/RTDOSE* > <PI>/<PI>_clinical_filenames.txt
+
+or
+
+ls <PI>/clinical/RD* > <PI>/<PI>_clinical_filenames.txt
+
+At this point your top level file structure should look like this:
+
+LymphKill/
+    <PI>/
+        <PI>_organs.mat
+        <PI>_dicom_info.mat
+        <PI>_mask_input.txt
+        <PI>_masks.mat
+        <PI>_clinical_filenames.txt
+        clinical/
+            CT Files
+            RTDOSE Files
+            RTPLAN File
+            RTSTRUCT File
+
+In order to run the simulation, execute the following command:
+
+./lymphKill.sh <PI> <PI>_masks.mat <beam_on_time> <gated> <fracs> <PI>_clinical_filenames.txt <PI>/<PI>_clinical_dose.mat
+
+Here <gated> is 0 if it is a non-gated plan and 1 if it is gated. <fracs> is the number of fractions (usually 5). The final argument in this script is the full path to the output file, including the folder name.
+
+Examples of this command can be seen in lymphKill.slurm, although here I was outputting all results into a folder called "redo"
+
+4. Estimating kill
+------------------
+
+The kill estimation is actually done in lymphKill.sh, but it can be done separately as well if you lose the output file.
+
+Assuming your top level file structure looks something like:
+
+LymphKill/
+    <PI>/
+        <PI>_clinical_dose.mat
+
+Run the command:
+
+./runDoseSummary.sh <PI>/<PI>_clinical_dose.mat
+
+This will print out blood dose fractions as well as a percent kill estimate using the exponential cell kill model with a 20% kill value at 0.5 Gy.
+
+You can get a cumulative kill plot by using the following command:
+
+./cumulativeKill.sh <PI>/<PI>_clinical_dose.mat <PI>
+
+It will print out the kill contributions for each "bin" between 0 and 5 Gy, and will create a png file called <PI>_cumkill.png plotting this.
+
+Extra. Static Organ Summaries
+-----------------------------
+
+Static organ summaries for basic plans for all patients can be found in /nv/vol141/phys_nrf/Jonathan/LymphKill/organ_summaries/
+
+These CSV file summaries can be generated using the following command:
+
+./runOrganDose.sh <PI>/<PI>_masks.sh <PI>/<PI>_clinical_filenames.txt <PI>/<PI>_organs_summary.csv
+
+The resulting CSV file will contain max, mean, and integral dose, as well as total volume and volume getting 5, 10, 15, and 20 Gy for each organ.
+
