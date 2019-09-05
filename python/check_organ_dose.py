@@ -2,19 +2,13 @@ import pydicom
 import numpy as np
 import pickle
 
-from file_utils import find_prefixed_files, find_dicom_directory
+from file_utils import find_prefixed_files, find_dicom_directory, load_rtdose_files
 
-def load_rtdose_files(files):
-	dosegrids = []
-	voxelsize = None
-	for i, fname in enumerate(files):
-		data = pydicom.dcmread(fname)
-		dosegrids.append((data.pixel_array * data.DoseGridScaling).astype(float))
-
-		voxelsize = data.PixelSpacing[0] * data.PixelSpacing[1] * data.SliceThickness
-	
+def get_voxel_size(fname):
+	data = pydicom.dcmread(fname)
+	voxelsize = data.PixelSpacing[0] * data.PixelSpacing[1] * data.SliceThickness
 	voxelsize /= 1000. #Rescale from mm^3 to cm^3
-	return dosegrids, voxelsize
+	return voxelsize
 
 def check_organ_dose(mask, dosegrid, voxelsize, dosechecks=[5, 10, 15, 20]):
 	dosemask = dosegrid[mask['Mask']]
@@ -49,7 +43,8 @@ if __name__=='__main__':
 	dcm_directory = find_dicom_directory(directory)
 
 	rtdose_files = find_prefixed_files(dcm_directory, 'RTDOSE')
-	dosegrids, voxelsize = load_rtdose_files(rtdose_files)
+	dosegrids = load_rtdose_files(rtdose_files)
+	voxelsize = get_voxel_size(rtdose_files[0])
 
 	with open('../data/AA/masks.pickle', 'rb') as infile:
 		masks = pickle.load(infile)
