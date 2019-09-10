@@ -56,7 +56,7 @@ def get_conversion_grids(ct_info, dose_info, dim_vol, dim_dos):
 	return posv[valid_voxel], posd[valid_voxel]
 
 def layer_size(mask):
-	num = np.sum(mask, axis=2)
+	num = np.sum(mask, axis=(0, 1))
 	num = num[num > 0]
 	return np.sum(num) / len(num)
 

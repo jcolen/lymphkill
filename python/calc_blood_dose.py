@@ -10,9 +10,10 @@ from file_utils import find_dicom_directory, find_prefixed_files, load_rtdose_fi
 from plan_info import get_beam_info
 
 def calc_beam_doses(mask, time_per_beam, gated):
-	print('Calculating mask %s:\tTV: %g' % (mask['Name'], mask['TimeVoxel']))
+	print('Calculating mask %s:\tTimeVoxel: %g' % (mask['Name'], mask['TimeVoxel']))
 	tm = time()
 	if mask['Stationary']:
+		print('Finished with %s. Took %g s' % (mask['Name'], time() - tm))
 		return mask['BeamDose'] * time_per_beam
 
 	beam_time = time_per_beam if not gated else time_per_beam * 3.
@@ -27,8 +28,15 @@ def calc_beam_doses(mask, time_per_beam, gated):
 		t += tvox
 		frac_dose = np.roll(frac_dose, layer_size, axis=1)
 
-	mask['FracDose'] = frac_dose
-	print('\tTook %g s' % (time() - t))
+	print('Finished with %s. Took %g s' % (mask['Name'], time() - tm))
+	return frac_dose
+
+def print_mask(mask):
+	print('Organ %s' % (mask['Name']))
+	for key in mask.keys():
+		if isinstance(mask[key], np.ndarray) or key == 'Name':
+			continue
+		print('  %15s:\t%g' % (key, mask[key]))
 
 '''
 @param masks - The masks structure returned by mask_generation
@@ -40,9 +48,12 @@ def calc_beam_doses(mask, time_per_beam, gated):
 def calc_blood_dose(masks, time_per_beam, dosegrids, 
 					fracs=1, 
 					gated=False, 
-					use_multiprocessing=False):
+					use_multiprocessing=True):
 	t = time()
 	print('Mask size: %s\tDose size: %s' % (masks[0]['Mask'].shape, dosegrids[0].shape))
+
+	for dose in dosegrids:
+		dose /= (fracs * time_per_beam)
 
 	#Find which voxels are part of the body and which are part of contoured organs
 	dosed_voxels = np.sum(np.array(dosegrids), axis=0).astype(bool)
@@ -73,8 +84,8 @@ def calc_blood_dose(masks, time_per_beam, dosegrids,
 	for j, mask in enumerate(masks):
 		if mask['CardiacOutput'] == -1:
 			other_ind = j
-		elif mask['CardiacOutput'] == 0:
-			mask['TimeVoxel'] = 1.
+		elif mask['Stationary']:
+			mask['TimeVoxel'] = time_per_beam 
 		else:
 			mask['TimeVoxel'] = h2h * mask['LayerSize'] / (mask['CardiacOutput'] * blood_voxels)
 			if mask['GV']:
@@ -107,7 +118,6 @@ def calc_blood_dose(masks, time_per_beam, dosegrids,
 
 	padding_factor = 2 * gv_density + 2
 	for i, mask in enumerate(masks):
-		print('Mask %s:\n\tCO: %g\n\tTV: %g' % (mask['Name'], mask['CardiacOutput'], mask['TimeVoxel']))
 		mask_nvoxels = np.sum(mask['Mask'])
 		mask['BeamDose'] = np.zeros([dosegrids.shape[0], blood_voxels])
 		if mask['GV']:
@@ -128,23 +138,24 @@ def calc_blood_dose(masks, time_per_beam, dosegrids,
 	if use_multiprocessing:
 		print('Using %d workers' % os.cpu_count())
 		pool = mp.Pool(os.cpu_count())
-		pool.map(functools.partial(calc_beam_doses, 
-								   time_per_beam=time_per_beam, 
-								   gated=gated), 
-				 masks)
+		frac_doses = pool.map(functools.partial(calc_beam_doses, 
+								   				time_per_beam=time_per_beam, 
+								   				gated=gated), masks)
 		pool.close()
+		for mask, frac_dose in zip(masks, frac_doses):
+			mask['FracDose'] = frac_dose
 	else:
 		for mask in masks:
-			calc_beam_doses(mask, time_per_beam, gated)
+			mask['FracDose'] = calc_beam_doses(mask, time_per_beam, gated)
 
 	blood = np.zeros(blood_voxels)
-	for day in range(len(fracs)):
+	for day in range(fracs):
 		print('Beginning dose for Day %d' % day)
-		for i in range(frac_dose.shape[0]):
+		for i in range(len(dosegrids)):
 			print('\tBeam %d of %d' % (i, len(dosegrids)))
 			for mask in masks:
 				blood += mask['FracDose'][i, :]
-				blood = np.random.permuation(blood)
+				blood = np.random.permutation(blood)
 	
 	return blood
 
@@ -160,12 +171,13 @@ if __name__=='__main__':
 
 	total_mu, active_beams, time_per_beam = get_beam_info(directory)
 
-	blood_voxels = calc_blood_dose(masks, time_per_beam, dosegrids, use_multiprocessing=True)
+	blood_voxels = calc_blood_dose(masks, time_per_beam, dosegrids)
 	print('Done calculating blood')
 
-	import matplotlib.pyplot as plt
-	plt.hist(blood_voxels)
-	plt.show()
+	bin_counts, bin_edges = np.histogram(blood_voxels, 
+		bins=np.arange(0, np.max(blood_voxels)+0.1, 0.1))
 
-	with open(os.path.join(directory, 'blood.pickle'), 'wb') as outfile:
-		pickle.dump(outfile, blood_voxels)
+	with open(os.path.join(directory, 'blood_hist.pickle'), 'wb') as outfile:
+		pickle.dump((bin_counts, bin_edges), outfile)
+	with open(os.path.join(directory, 'blood_dose.pickle'), 'wb') as outfile:
+		pickle.dump(blood_voxels, outfile)
