@@ -99,9 +99,10 @@ def mask_generation(
 	masks = []
 	other_organs_ind = -1
 	used_voxels = None
-	#mask_dicts.reverse()
 	for i, dct in enumerate(mask_dicts):
 		contour_idx = find_matching_contour_idx(contours, dct['NameStrings'])
+		if contour_idx < 0:
+			continue
 		mdict = {}
 		mdict['Name'] = contours['ROIName'][contour_idx]
 		mdict['GV'] = dct['GV']
