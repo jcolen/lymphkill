@@ -49,4 +49,4 @@ if __name__=='__main__':
 	with open('../data/AA/masks.pickle', 'rb') as infile:
 		masks = pickle.load(infile)
 	
-	check_all_organs(masks, np.sum(np.array(dosegrids), axis=0).transpose(1, 2, 0), voxelsize)
+	check_all_organs(masks, np.sum(np.array(dosegrids), axis=0), voxelsize)
