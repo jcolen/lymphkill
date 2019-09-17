@@ -4,12 +4,28 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pydicom
 
+'''
+Find the first file with a given prefix in a directory
+Parameters:
+	directory - The directory to look in
+	prefix - The file prefix to look for
+Returns:
+	The name of the file, or None if none were found
+'''
 def find_prefixed_file(directory, prefix):
 	for i in os.listdir(directory):
 		if re.search('^'+prefix, i) is not None:
 			return os.path.join(directory, i)
 	return None
 
+'''
+Find the all files with a given prefix in a directory
+Parameters:
+	directory - The directory to look in
+	prefix - The file prefix to look for
+Returns:
+	The names of the files, or None if none were found
+'''
 def find_prefixed_files(directory, prefix):
 	files = []
 	for i in os.listdir(directory):
@@ -17,15 +33,29 @@ def find_prefixed_files(directory, prefix):
 			files.append(os.path.join(directory, i))
 	return files
 
+'''
+Find the subdirectory containing dicom files
+Parameters:
+	directory - The directory to look in
+Returns:
+	The name of the directory, or None if none was found
+'''
 def find_dicom_directory(directory):
-	dcm_directory = None
-
 	for i in os.listdir(directory):
-		if os.path.isdir(os.path.join(directory, i)):
-			dcm_directory = os.path.join(directory, i)
+		subd = os.path.join(directory, i)
+		if os.path.isdir(subd):
+			for j in os.listdir(subd):
+				if j[-4:] == '.dcm':
+					return subd
+	return None
 
-	return dcm_directory
-
+'''
+Load the dose grids from the RTDOSE files
+Parameters:
+	files - A list of rtdose files
+Returns:
+	A list of dose grids
+'''
 def load_rtdose_files(files):
 	dosegrids = []
 	for i, fname in enumerate(files):
@@ -37,6 +67,11 @@ def load_rtdose_files(files):
 
 	return dosegrids
 
+'''
+Play a video of a sequence of image frames
+Parameters:
+	Cube - an X x Y x Z ndarray, where Z is the number of frames
+'''
 def implay(cube):
 	plt.ion()
 	plt.figure()

@@ -4,11 +4,22 @@ import os
 import numpy as np
 import functools
 import multiprocessing as mp
-from time import time
+import argparse
 
+from time import time
 from file_utils import find_dicom_directory, find_prefixed_files, load_rtdose_files
 from plan_info import get_beam_info
 
+'''
+Calculate the beam doses for a single fraction for an organ
+Parameters:
+	mask - The mask structure for the organ
+	time_per_beam - The total time on for the beam (not including gating)
+	gated - True if the treatment is gated
+Returns:
+	frac_dose - The single fraction dose for each beam for the organ
+		Shape is (nbeams, nvoxels)
+'''
 def calc_beam_doses(mask, time_per_beam, gated):
 	print('Calculating mask %s:\tTimeVoxel: %g' % (mask['Name'], mask['TimeVoxel']))
 	tm = time()
@@ -31,19 +42,17 @@ def calc_beam_doses(mask, time_per_beam, gated):
 	print('Finished with %s. Took %g s' % (mask['Name'], time() - tm))
 	return frac_dose
 
-def print_mask(mask):
-	print('Organ %s' % (mask['Name']))
-	for key in mask.keys():
-		if isinstance(mask[key], np.ndarray) or key == 'Name':
-			continue
-		print('  %15s:\t%g' % (key, mask[key]))
 
 '''
-@param masks - The masks structure returned by mask_generation
-@param time_per_beam - The beam on time for each beam
-@param dosegrids - The grids loaded by each RTDOSE file
-@param fracs - The number of fractions to compute
-@param gated - True if the plan is gated
+Calculate the blood dose delivered during a treatment
+Parameters:
+	masks - The masks structure returned by mask_generation
+	time_per_beam - The beam on time for each beam
+	dosegrids - The grids loaded by each RTDOSE file
+	fracs - The number of fractions to compute
+	gated - True if the plan is gated
+Returns:
+	blood - A (nvoxels, 1) matrix of the dose delivered to each blood voxel
 '''
 def calc_blood_dose(masks, time_per_beam, dosegrids, 
 					fracs=1, 
@@ -94,6 +103,7 @@ def calc_blood_dose(masks, time_per_beam, dosegrids,
 				remainingCO -= mask['CardiacOutput']
 			mask['TimeVoxel'] = max(mask['TimeVoxel'], min_tvox)
 	
+	#Now figure out time voxel information for other organs and the remaining body voxels
 	nunmasked = np.sum(unmasked_voxels)
 	remaining_layers = np.sum(np.sum(unmasked_voxels, axis=(0, 1)) > 0)
 	masks.append({'Name': 'Remaining'})
@@ -107,6 +117,7 @@ def calc_blood_dose(masks, time_per_beam, dosegrids,
 		remainingCO -= masks[other_ind]['CardiacOutput']
 		masks[other_ind]['TimeVoxel'] = max(min_tvox, masks[other_ind]['TimeVoxel'])
 	
+	#Build mask structure for the remaining body voxels
 	masks[-1]['CardiacOutput'] = remainingCO
 	remaining_tvox = h2h * masks[-1]['LayerSize'] / (remainingCO * blood_voxels)
 	masks[-1]['TimeVoxel'] = max(min_tvox, remaining_tvox)
@@ -116,6 +127,10 @@ def calc_blood_dose(masks, time_per_beam, dosegrids,
 
 	dosegrids = np.array(dosegrids)
 
+	'''
+	Pad organ doses to have the same size as the blood matrix for easier adding
+	Great vessels are replicated n=8 times (found to give good results)
+	'''
 	padding_factor = 2 * gv_density + 2
 	for i, mask in enumerate(masks):
 		mask_nvoxels = np.sum(mask['Mask'])
@@ -124,7 +139,7 @@ def calc_blood_dose(masks, time_per_beam, dosegrids,
 			sub_size = int(np.floor(blood_voxels / padding_factor))
 			sub_mask = np.zeros([dosegrids.shape[0], sub_size])
 			sub_mask[:, :mask_nvoxels] = dosegrids[:, mask['Mask']].reshape([dosegrids.shape[0], -1])
-			mask['BeamDose'][:, :gv_density*sub_size] = np.repeat(sub_mask, 8, axis=1)
+			mask['BeamDose'][:, :gv_density*sub_size] = np.repeat(sub_mask, gv_density, axis=1)
 		else:
 			mask['BeamDose'][:, :mask_nvoxels] = dosegrids[:, mask['Mask']].reshape(\
 				[dosegrids.shape[0], -1])
@@ -135,6 +150,7 @@ def calc_blood_dose(masks, time_per_beam, dosegrids,
 	print('Time to set up doses: %g' % (time() - t))
 	print('Precalculating total beam doses')
 
+	#Calculate fraction doses, using multiprocessing if required
 	if use_multiprocessing:
 		print('Using %d workers' % os.cpu_count())
 		pool = mp.Pool(os.cpu_count())
@@ -148,6 +164,7 @@ def calc_blood_dose(masks, time_per_beam, dosegrids,
 		for mask in masks:
 			mask['FracDose'] = calc_beam_doses(mask, time_per_beam, gated)
 
+	#Apply single fraction doses from each organ to the total blood matrix over all fractions
 	blood = np.zeros(blood_voxels)
 	for day in range(fracs):
 		print('Beginning dose for Day %d' % day)
@@ -161,15 +178,18 @@ def calc_blood_dose(masks, time_per_beam, dosegrids,
 
 
 if __name__=='__main__':
-	directory = '../data/AA'
-	dcm_directory = find_dicom_directory(directory)
+	parser = argparse.ArgumentParser()
+	parser.add_argument('directory', type=str, help='The patient directory to look in')
+	args = parser.parse_args()
+	
+	dcm_directory = find_dicom_directory(args.directory)
 	rtdose_files = find_prefixed_files(dcm_directory, 'RTDOSE')
 	dosegrids = load_rtdose_files(rtdose_files)
 
-	with open(os.path.join(directory, 'masks.pickle'), 'rb') as infile:
+	with open(os.path.join(args.directory, 'masks.pickle'), 'rb') as infile:
 		masks = pickle.load(infile)
 
-	total_mu, active_beams, time_per_beam = get_beam_info(directory)
+	total_mu, active_beams, time_per_beam = get_beam_info(args.directory)
 
 	blood_voxels = calc_blood_dose(masks, time_per_beam, dosegrids)
 	print('Done calculating blood')
@@ -177,7 +197,7 @@ if __name__=='__main__':
 	bin_counts, bin_edges = np.histogram(blood_voxels, 
 		bins=np.arange(0, np.max(blood_voxels)+0.1, 0.1))
 
-	with open(os.path.join(directory, 'blood_hist.pickle'), 'wb') as outfile:
+	with open(os.path.join(args.directory, 'blood_hist.pickle'), 'wb') as outfile:
 		pickle.dump((bin_counts, bin_edges), outfile)
-	with open(os.path.join(directory, 'blood_dose.pickle'), 'wb') as outfile:
+	with open(os.path.join(args.directory, 'blood_dose.pickle'), 'wb') as outfile:
 		pickle.dump(blood_voxels, outfile)

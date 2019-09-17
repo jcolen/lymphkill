@@ -1,6 +1,14 @@
 import pydicom
+import argparse
 from file_utils import find_dicom_directory, find_prefixed_file
 
+'''
+Get the beam information for a given plan
+Parameters:
+	directory - The patient directory to look for a plan in
+Returns:
+	total_mu, active_beams, time_per_beam: The number of MUs in the plan, the number of active beams, and the time on in seconds for each beam
+'''
 def get_beam_info(directory):
 	dcm_directory = find_dicom_directory(directory)
 	rtplan_file = find_prefixed_file(dcm_directory, 'RTPLAN')
@@ -21,6 +29,10 @@ def get_beam_info(directory):
 	return total_mu, active_beams, time_per_beam
 
 if __name__=='__main__':
-	total_mu, active_beams, time_per_beam = get_beam_info('../data/AA')	
+	parser = argparse.ArgumentParser()
+	parser.add_argument('directory', type=str, help='The patient directory to look in')
+	args = parser.parse_args()
+
+	total_mu, active_beams, time_per_beam = get_beam_info(args.directory)	
 	print('Total MU: %d\nActive Beams: %d\nTime Per Beam: %g' % \
 		(total_mu, active_beams, time_per_beam))

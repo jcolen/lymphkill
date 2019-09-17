@@ -2,11 +2,20 @@ import pydicom
 import os
 import re
 import pickle
+import argparse
 
 import numpy as np
 from matplotlib.path import Path
-from file_utils import find_prefixed_file
+from file_utils import find_prefixed_file, find_dicom_directory
 
+'''
+Load all valid CT images for a given patient
+Parameters:
+	directory - The directory to look in
+	siUID - The patient Study Instance UID
+Returns:
+	imgheaders - A list of loaded images
+'''
 def load_dicom_imageheaders(directory, siUID):
 	#Loop over dicom files in directory
 	imgheaders = []
@@ -20,6 +29,13 @@ def load_dicom_imageheaders(directory, siUID):
 	imgheaders.sort(key=lambda x: int(x.InstanceNumber))
 	return imgheaders
 
+'''
+Build an affine transformation for transforming real space points to voxel points
+Parameters:
+	headers - Imageheaders for each CT image
+Returns:
+	A - the affine transformation matrix
+'''
 def build_affine_transformation(headers):
 	N = len(headers)
 	dr, dc = float(headers[0].PixelSpacing[0]), float(headers[0].PixelSpacing[1])
@@ -39,14 +55,22 @@ def build_affine_transformation(headers):
 	
 	return A
 
-
-def read_structures(rtssheader, imageheaders):
+'''
+Read structures from rtstruct information and build contours dictionary
+Parameters:
+	rtstruct - The loaded RTSTRUCT file
+	imageheaders - headers for each CT image in the patient directory
+Returns
+	contours - A dictionary containing organ information
+		keys: ROIName, Points, VoxPoints, Segmentation
+'''
+def read_structures(rtstruct, imageheaders):
 	xfm = build_affine_transformation(imageheaders)
 	dim_min = np.array([0, 0, 0, 1])
 	dim_max = np.array([int(imageheaders[0].Columns)-1, int(imageheaders[1].Rows)-1, len(imageheaders)-1, 1])
 
-	roi_contour_sequence = rtssheader.ROIContourSequence
-	roi_structureset_sequence = rtssheader.StructureSetROISequence
+	roi_contour_sequence = rtstruct.ROIContourSequence
+	roi_structureset_sequence = rtstruct.StructureSetROISequence
 
 	nrois = len(roi_contour_sequence)
 	contours = {
@@ -123,34 +147,39 @@ def read_structures(rtssheader, imageheaders):
 
 	return contours
 
-def load_structures(directory, struct_prefix='RTSTRUCT', dose_prefix='RTDOSE', ct_prefix='CT'):
+'''
+Load in structures from the RTSTRUCT file in a given directory
+Parameters:
+	directory - The directory containing dicom files
+	struct_prefix - The file prefix for the RTSTRUCT file
+Returns:
+	contours - A dictionary containing organ information
+		keys: ROIName, Points, VoxPoints, Segmentation
+'''
+def load_structures(directory, struct_prefix='RTSTRUCT'):
 	rtstruct_file = find_prefixed_file(directory, struct_prefix)
-	ct_file = find_prefixed_file(directory, ct_prefix)
-	rtdose_file = find_prefixed_file(directory, dose_prefix)
-
-	rtssheader = pydicom.dcmread(rtstruct_file)
-	ct_info = pydicom.dcmread(ct_file)
-	rtd_info = pydicom.dcmread(rtdose_file)
-
-	print(ct_file)
-	print(rtdose_file)
-
-	imageheaders = load_dicom_imageheaders(directory, rtssheader.StudyInstanceUID)
+	rtstruct = pydicom.dcmread(rtstruct_file)
+	imageheaders = load_dicom_imageheaders(directory, rtstruct.StudyInstanceUID)
 
 	print('Found Organs:')
-	for struct in rtssheader.StructureSetROISequence:
+	for struct in rtstruct.StructureSetROISequence:
 		print(struct.ROIName)
 
 	print('Loading in contours')
-	contours = read_structures(rtssheader, imageheaders)
+	contours = read_structures(rtstruct, imageheaders)
 
 	return contours 
 
 
 if __name__=='__main__':
-	contours = load_structures('../data/AA/clinical')
+	parser = argparse.ArgumentParser()
+	parser.add_argument('directory', type=str, help='The patient directory to look in')
+	args = parser.parse_args()
+
+	directory = find_dicom_directory(args.directory)
+	contours = load_structures(directory)
 	for i in contours['ROIName']:
 		print(i)
-	outfile = open('../data/AA/contours.pickle', 'wb')
+	outfile = open(os.path.join(args.directory, 'contours.pickle'), 'wb')
 	pickle.dump(contours, outfile)
 	outfile.close()
