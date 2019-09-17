@@ -27,8 +27,8 @@ Each script takes a single command line argument. `spreadsheet_processing.py` ac
 
 The remaining scripts accept a path to a patient directory. All generated pickle files will be stored in this directory. It is assumed that this directory has a subdirectory which contains all of the dicom files needed (CT, RTDOSE, RTPLAN, RTSTRUCT). To run the full pipeline, simply place the zip file containing all of this information in that directory and execute:
 
-`python run_pipeline.py \<path_to_directory\>`
+`python run_pipeline.py <path_to_directory>`
 
 This will unzip the patient information and perform all of the processing. Structures generated in intermediate steps will be stored as pickle files. Any other scripts can be run as, for example:
 
-`python structure_loading.py \<path_to_directory\>`
+`python structure_loading.py <path_to_directory>`
