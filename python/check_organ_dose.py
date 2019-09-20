@@ -3,6 +3,7 @@ import numpy as np
 import pickle
 import argparse
 import os
+import pandas as pd
 
 from file_utils import find_prefixed_files, find_dicom_directory, load_rtdose_files
 
@@ -34,7 +35,7 @@ Returns:
 	intdose - Integral dose for the organ
 	dosevols - Volumes for each dose threshold
 '''
-def check_organ_dose(mask, dosegrid, voxelsize, dosechecks=[5, 10, 15, 20]):
+def get_organ_info(mask, dosegrid, voxelsize, dosechecks=[5, 10, 15, 20]):
 	dosemask = dosegrid[mask['Mask']]
 	maxdose = np.max(dosemask)
 	meandose = np.sum(dosemask) / np.sum(mask['Mask'])
@@ -46,42 +47,77 @@ def check_organ_dose(mask, dosegrid, voxelsize, dosechecks=[5, 10, 15, 20]):
 	return maxdose, meandose, volume, intdose, dosevols
 
 '''
-Print static dose information for a set of organs
+Get static dose information for a patient's organs
 Parameters:
 	masks - The mask structures from mask_generation.py for the organs to check
 	dosegrid - The dose grid to check for
 	voxelsize - The volume of a single voxel
 	dosechecks - Dose thresholds to check at
+Return:
+	A pandas dataframe containing all of the information
 '''
-def check_all_organs(masks, dosegrid, voxelsize, dosechecks=[5, 10, 15, 20]):
+def get_organs_dataframe(masks, dosegrid, voxelsize, dosechecks=[5, 10, 15, 20]):
+	data = []
 	for mask in masks:
-		mx, mn, vl, itd, dv = check_organ_dose(mask, dosegrid, voxelsize, dosechecks)
-		outstr = '%20s,%g,%g,%g,%g' % (mask['Name'], mx, mn, vl, itd)
-		for i in dv:
-			outstr += ',%g' % (i / vl)
-		print(outstr)
-	mx = np.max(dosegrid)
-	mn = np.sum(dosegrid) / np.sum(dosegrid.astype(bool))
-	vl = np.sum(dosegrid.astype(bool)) * voxelsize
-	itd = mn * vl
-	dv = [np.sum(dosegrid >= j) * voxelsize for j in dosechecks]
-	outstr = '%20s,%g,%g,%g,%g' % ('ALL', mx, mn, vl, itd)
-	for i in dv:
-		outstr += ',%g' % (i / vl)
-	print(outstr)
+		mx, mn, vl, itd, dv = get_organ_info(mask, dosegrid, voxelsize, dosechecks)
+		data.append({'Organ': mask['Name'], 'MaxDose': mx, 'MeanDose': mn, 
+					 'TotalVolume (cm^3)': vl, 'IntegralDose': itd})
+		for i in range(len(dosechecks)):
+			data[-1]['V%d dosevol' % dosechecks[i]] = dv[i]
+	
+	data.append({'Organ': 'ALL', 
+				 'MaxDose': np.max(dosegrid), 
+				 'MeanDose': np.sum(dosegrid) / np.sum(dosegrid.astype(bool)),
+				 'TotalVolume (cm^3)': np.sum(dosegrid.astype(bool)) * voxelsize,
+				 'IntegralDose': np.sum(dosegrid) * voxelsize})
+	for i in dosechecks:
+		data[-1]['V%d dosevol' % i] = np.sum(dosegrid >= i) * voxelsize
+	df = pd.DataFrame(data)
+
+	for i in dosechecks:
+		df['V%d dosevol/volume' % i] = df['V%d dosevol' % i] / df['TotalVolume (cm^3)']
+	
+	return df
+
+'''
+Load information from a patient directory and get a dataframe of organ information
+Parameters:
+	directory - The directory to look in
+	patientname - The name of the patient. None if it is the name of the directory
+	dosechecks - The dose volume thresholds to check at
+'''
+def get_static_dose_info(directory, patientname=None, dosechecks=[5, 10, 15, 20]):
+	dcm_directory = find_dicom_directory(args.directory)
+	rtdose_files = find_prefixed_files(dcm_directory, 'RTDOSE')
+	dosegrids = load_rtdose_files(rtdose_files)
+	voxelsize = get_voxel_size(rtdose_files[0])
+
+	with open(os.path.join(directory, 'masks.pickle'), 'rb') as infile:
+		masks = pickle.load(infile)
+	
+	df = get_organs_dataframe(masks, np.sum(np.array(dosegrids), axis=0), voxelsize, dosechecks)
+
+	#Add in patient name
+	if patientname is None:
+		toks = directory.split('/')
+		df['Patient'] = toks[-1] if len(toks[-1]) > 0 else toks[-2]
+	else:
+		df['Patient'] = patientname
+
+	#Reorder columns
+	cols = ['Patient', 'Organ', 'MaxDose', 'MeanDose', 'TotalVolume (cm^3)', 'IntegralDose']
+	for i in dosechecks:
+		cols.append('V%d dosevol' % i)
+		cols.append('V%d dosevol/volume' % i)
+	df = df[cols]
+
+	return df
 
 if __name__=='__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('directory', type=str, help='The patient directory to look in')
 	args = parser.parse_args()
 
-	dcm_directory = find_dicom_directory(args.directory)
-
-	rtdose_files = find_prefixed_files(dcm_directory, 'RTDOSE')
-	dosegrids = load_rtdose_files(rtdose_files)
-	voxelsize = get_voxel_size(rtdose_files[0])
-
-	with open(os.path.join(args.directory, 'masks.pickle'), 'rb') as infile:
-		masks = pickle.load(infile)
-	
-	check_all_organs(masks, np.sum(np.array(dosegrids), axis=0), voxelsize)
+	df = get_static_dose_info(args.directory)
+	print(df)
+	df.to_csv(os.path.join(args.directory, 'static_organ_dose.csv'))

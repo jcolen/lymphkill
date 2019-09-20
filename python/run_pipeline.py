@@ -45,7 +45,10 @@ if __name__ == '__main__':
 
 	with open(os.path.join(args.directory, 'masks.pickle'), 'wb') as outfile:
 		pickle.dump(masks, outfile)
-	
+
+	df = get_static_dose_info(args.directory)
+	df.to_csv(os.path.join(args.directory, 'static_organ_dose.csv'))
+
 	total_mu, active_beams, time_per_beam = get_beam_info(args.directory)
 	print('Total MU: %d\nActive Beams: %d\nTime Per Beam: %g' % \
 		(total_mu, active_beams, time_per_beam))
