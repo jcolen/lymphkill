@@ -1,6 +1,6 @@
 # Blood Dose and Lymphocyte Kill Simulation
 
-This is a repository containing the code referenced in \<CITE PAPER UPON SUBMISSION\>. The folder `matlab` contains the matlab scripts which were used for the original run of code. The folder `python` contains those same scripts but rewritten in Python with the goal of readability and better code structure. 
+This is a repository containing the code referenced in \<CITE PAPER UPON SUBMISSION\>. The folder `matlabcode` the matlab scripts which were used for the original run of code. The folder `lymphkill` contains those same scripts but rewritten in Python with the goal of readability and better code structure. 
 
 The Python code requires the following libraries to be installed:
 - numpy
@@ -10,11 +10,15 @@ The Python code requires the following libraries to be installed:
 - pandas
 - pydicom
 
+They will be installed automatically with running:
+
+`python setup.py install`
+
 Because the goal is to replace all Matlab scripts with Python, we will not outline the structure of the Matlab code. The python programs included are:
 - `calc_blood_dose.py` - Calculation of the dose absorbed by blood during a treatment
   - Output stored in `blood_dose.pickle`, `blood_hist.pickle`
 - `calc_blood_kill.py` - Calculation of the blood cell kill, given the absorbed dose
-- `check_organ_dose.py` - Calculation of static organ doses
+- `static_organ_info.py` - Calculation of static organ doses
 - `mask_generation.py` - Generation of mask structures for use in blood dose calculation
   - Output stored in `masks.pickle`
 - `plan_info.py` - Parse RTPLAN files for information such as number of beams and beam on time

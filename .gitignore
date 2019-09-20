@@ -2,3 +2,4 @@ data
 *.swp
 *.pyc
 python/__pycache__
+build

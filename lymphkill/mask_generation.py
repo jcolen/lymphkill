@@ -4,8 +4,8 @@ import os
 import pickle
 import argparse
 
-from file_utils import find_prefixed_file, find_dicom_directory, implay, find_prefixed_files
 from sys import exit
+from lymphkill.file_utils import find_prefixed_file, find_dicom_directory, implay, find_prefixed_files
 
 basic_mask_dicts = [
 	{'NameStrings': ['other', 'organs'], 'GV': False, 'Stationary': False, 'CardiacOutput': -1},

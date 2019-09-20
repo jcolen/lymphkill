@@ -1,17 +1,19 @@
-from structure_loading import load_structures
-from file_utils import find_dicom_directory, find_prefixed_file, find_prefixed_files, load_rtdose_files
-from mask_generation import mask_generation
-from plan_info import get_beam_info
-from calc_blood_dose import calc_blood_dose
-from calc_blood_kill import calc_kill_frac
-
 import pydicom
 import pickle
 import argparse
 import os
 import re
 import numpy as np
+
 from sys import exit
+
+from lymphkill.calc_blood_dose import calc_blood_dose
+from lymphkill.calc_blood_kill import calc_kill_frac
+from lymphkill.file_utils import find_dicom_directory, find_prefixed_file, find_prefixed_files, load_rtdose_files
+from lymphkill.mask_generation import mask_generation
+from lymphkill.plan_info import get_beam_info
+from lymphkill.static_organ_info import get_static_dose_info
+from lymphkill.structure_loading import load_structures
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()

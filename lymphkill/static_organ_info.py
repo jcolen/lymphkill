@@ -5,7 +5,7 @@ import argparse
 import os
 import pandas as pd
 
-from file_utils import find_prefixed_files, find_dicom_directory, load_rtdose_files
+from lymphkill.file_utils import find_prefixed_files, find_dicom_directory, load_rtdose_files
 
 '''
 Get the volume of a voxel
@@ -87,7 +87,7 @@ Parameters:
 	dosechecks - The dose volume thresholds to check at
 '''
 def get_static_dose_info(directory, patientname=None, dosechecks=[5, 10, 15, 20]):
-	dcm_directory = find_dicom_directory(args.directory)
+	dcm_directory = find_dicom_directory(directory)
 	rtdose_files = find_prefixed_files(dcm_directory, 'RTDOSE')
 	dosegrids = load_rtdose_files(rtdose_files)
 	voxelsize = get_voxel_size(rtdose_files[0])

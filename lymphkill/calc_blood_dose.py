@@ -7,8 +7,9 @@ import multiprocessing as mp
 import argparse
 
 from time import time
-from file_utils import find_dicom_directory, find_prefixed_files, load_rtdose_files
-from plan_info import get_beam_info
+
+from lymphkill.file_utils import find_dicom_directory, find_prefixed_files, load_rtdose_files
+from lymphkill.plan_info import get_beam_info
 
 '''
 Calculate the beam doses for a single fraction for an organ

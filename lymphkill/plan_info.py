@@ -1,6 +1,7 @@
 import pydicom
 import argparse
-from file_utils import find_dicom_directory, find_prefixed_file
+
+from lymphkill.file_utils import find_dicom_directory, find_prefixed_file
 
 '''
 Get the beam information for a given plan
