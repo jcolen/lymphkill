@@ -1,0 +1,35 @@
+#!/usr/bin/env python
+
+import os
+import pickle
+import argparse
+import pydicom
+import numpy as np
+from sys import exit
+
+from lymphkill.file_utils import find_prefixed_file, find_prefixed_files, find_dicom_directory
+from lymphkill.mask_generation import mask_generation
+
+if __name__=='__main__':
+	parser = argparse.ArgumentParser('Mask generation. Requires structures to be loaded')
+	parser.add_argument('directory', type=str, help='The patient directory to look in')
+	args = parser.parse_args()
+
+	with open(os.path.join(args.directory, 'contours.pickle'), 'rb') as infile:
+		contours = pickle.load(infile)
+	
+	try:
+		dcm_directory = find_dicom_directory(args.directory)
+		ct_prefix = 'CT'
+		dose_prefix = 'RTDOSE'
+		
+		ct_infos = [pydicom.dcmread(f) for f in find_prefixed_files(dcm_directory, ct_prefix)]
+		dose_info = pydicom.dcmread(find_prefixed_file(dcm_directory, dose_prefix))
+	except Exception as ex:
+		print(type(ex), ex)
+		print('Could not load in ct/dose info')
+		exit(0)
+	
+	masks = mask_generation(contours, ct_infos, dose_info)
+	with open(os.path.join(args.directory, 'masks.pickle'), 'wb') as outfile:
+		pickle.dump(masks, outfile)

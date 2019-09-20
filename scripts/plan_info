@@ -1,0 +1,14 @@
+#!/usr/bin/env python
+
+import argparse
+
+from lymphkill.plan_info import get_beam_info
+
+if __name__=='__main__':
+	parser = argparse.ArgumentParser('Get treatment plan information')
+	parser.add_argument('directory', type=str, help='The patient directory to look in')
+	args = parser.parse_args()
+
+	total_mu, active_beams, time_per_beam = get_beam_info(args.directory)	
+	print('Total MU: %d\nActive Beams: %d\nTime Per Beam: %g' % \
+		(total_mu, active_beams, time_per_beam))

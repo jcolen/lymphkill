@@ -1,0 +1,25 @@
+#!/usr/bin/env python
+
+import pandas as pd
+import argparse
+
+from lymphkill.spreadsheet_processing import get_all_subsets, get_average_fractions, get_accuracy_info, get_accuracy_plot
+
+if __name__=='__main__':
+	parser = argparse.ArgumentParser('Some basic data processing and plotting on a patient spreadsheet')
+	parser.add_argument('spreadsheet', type=str, help='Path to spreadsheet')
+	args = parser.parse_args()
+
+	df = pd.read_csv(args.spreadsheet)
+	df['RTOG'] = pd.to_numeric(df['RTOG'], errors='coerce')
+	df['Tumor Volume (cc)'] = pd.to_numeric(df['Tumor Volume (cc)'], errors='coerce')
+
+	subsets = get_all_subsets(df)
+	for subset in subsets:
+		print('%s\tN=%d' % (subset, len(subsets[subset])))
+		get_average_fractions(subsets[subset])
+		get_accuracy_info(subsets[subset])
+	get_accuracy_plot(subsets, ['All'])
+	get_accuracy_plot(subsets, [s for s in subsets if 'Gated' in s])
+	get_accuracy_plot(subsets, [s for s in subsets if 'TV' in s])
+	get_accuracy_plot(subsets, [s for s in subsets if 'DT' in s])

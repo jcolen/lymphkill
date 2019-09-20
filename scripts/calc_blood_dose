@@ -1,0 +1,35 @@
+#!/usr/bin/env python
+
+import os
+import pickle
+import numpy as np
+import argparse
+
+from lymphkill.calc_blood_dose import calc_blood_dose
+from lymphkill.file_utils import find_dicom_directory, find_prefixed_files, load_rtdose_files
+from lymphkill.plan_info import get_beam_info
+
+if __name__=='__main__':
+	parser = argparse.ArgumentParser('Blood dose calculation. Requires masks')
+	parser.add_argument('directory', type=str, help='The patient directory to look in')
+	args = parser.parse_args()
+	
+	dcm_directory = find_dicom_directory(args.directory)
+	rtdose_files = find_prefixed_files(dcm_directory, 'RTDOSE')
+	dosegrids = load_rtdose_files(rtdose_files)
+
+	with open(os.path.join(args.directory, 'masks.pickle'), 'rb') as infile:
+		masks = pickle.load(infile)
+
+	total_mu, active_beams, time_per_beam = get_beam_info(args.directory)
+
+	blood_voxels = calc_blood_dose(masks, time_per_beam, dosegrids)
+	print('Done calculating blood')
+
+	bin_counts, bin_edges = np.histogram(blood_voxels, 
+		bins=np.arange(0, np.max(blood_voxels)+0.1, 0.1))
+
+	with open(os.path.join(args.directory, 'blood_hist.pickle'), 'wb') as outfile:
+		pickle.dump((bin_counts, bin_edges), outfile)
+	with open(os.path.join(args.directory, 'blood_dose.pickle'), 'wb') as outfile:
+		pickle.dump(blood_voxels, outfile)

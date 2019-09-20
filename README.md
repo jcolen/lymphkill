@@ -14,17 +14,17 @@ They will be installed automatically with running:
 
 `python setup.py install`
 
-Because the goal is to replace all Matlab scripts with Python, we will not outline the structure of the Matlab code. The python programs included are:
-- `calc_blood_dose.py` - Calculation of the dose absorbed by blood during a treatment
+Because the goal is to replace all Matlab scripts with Python, we will not outline the structure of the Matlab code. The python source files are loacted in the `lymphkill` subdirectory. The scripts, which can be run standalone from the command line, are located in the `scripts` subdirectory, and are installed with `setup.py`. They are:
+- `calc_blood_dose` - Calculation of the dose absorbed by blood during a treatment
   - Output stored in `blood_dose.pickle`, `blood_hist.pickle`
-- `calc_blood_kill.py` - Calculation of the blood cell kill, given the absorbed dose
-- `static_organ_info.py` - Calculation of static organ doses
-- `mask_generation.py` - Generation of mask structures for use in blood dose calculation
+- `calc_blood_kill` - Calculation of the blood cell kill, given the absorbed dose
+- `static_organ_info` - Calculation of static organ doses
+- `mask_generation` - Generation of mask structures for use in blood dose calculation
   - Output stored in `masks.pickle`
-- `plan_info.py` - Parse RTPLAN files for information such as number of beams and beam on time
-- `run_pipeline.py` - Given a zipped file containing patient CT, dose, plan, and structure set info (in dicom format), run the entire pipeline of scripts
-- `spreadsheet_processing.py` - Data processing for summary spreadsheets
-- `structure_loading.py` - Loading of physician contoured organs into boolean masks
+- `plan_info` - Parse RTPLAN files for information such as number of beams and beam on time
+- `run_pipeline` - Given a zipped file containing patient CT, dose, plan, and structure set info (in dicom format), run the entire pipeline of scripts
+- `spreadsheet_processing` - Data processing for summary spreadsheets
+- `structure_loading` - Loading of physician contoured organs into boolean masks
   - Output stored in `contours.pickle`
 
 Each script takes a single command line argument. `spreadsheet_processing.py` accepts a path to a csv file which has a summary of patient and prediction information. 

@@ -1,0 +1,17 @@
+#!/usr/bin/env python
+
+import argparse
+import os
+from lymphkill.static_organ_info import get_static_dose_info
+
+
+if __name__=='__main__':
+	parser = argparse.ArgumentParser('Static dose information. Requires masks')
+	parser.add_argument('directory', type=str, help='The patient directory to look in')
+	args = parser.parse_args()
+
+	df = get_static_dose_info(args.directory)
+	print(df)
+	outpath = os.path.join(args.directory, 'static_organ_dose.csv')
+	print('Printing dataframe to %s' % outpath)
+	df.to_csv(outpath)

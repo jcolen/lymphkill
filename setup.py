@@ -13,5 +13,13 @@ setup(
 					  'pickle',
 					  'functools',
 					  'pandas',
-					  'pydicom']
+					  'pydicom'],
+	scripts=['scripts/calc_blood_dose',
+			 'scripts/calc_blood_kill',
+			 'scripts/mask_generation',
+			 'scripts/plan_info',
+			 'scripts/run_pipeline',
+			 'scripts/spreadsheet_processing',
+			 'scripts/static_organ_info',
+			 'scripts/structure_loading']
 )
