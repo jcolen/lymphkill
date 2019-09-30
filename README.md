@@ -4,6 +4,7 @@ This is a repository containing the code referenced in \<CITE PAPER UPON SUBMISS
 
 The Python code requires the following libraries to be installed:
 - numpy
+- scipy
 - matplotlib
 - pickle
 - functools
