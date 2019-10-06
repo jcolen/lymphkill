@@ -3,3 +3,4 @@ data
 *.pyc
 python/__pycache__
 build
+manuscripts

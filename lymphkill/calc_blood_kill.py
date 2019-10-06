@@ -63,6 +63,67 @@ def regeneration(percent, regen_rate, day=25):
 	percent -= (day - 25) * regen_rate if day > 25 else 0
 	return percent
 
+'''
+Determine the natural cell death at a given day
+Parameters:
+	pretx - The Pre-Tx LYA in cells/L * 1e9
+	day - The measurement day
+Returns:
+	The LYA drop due to natural cell death at day
+	TODO change this so it is nonzero
+'''
+def natural_cell_death(pretx, day):
+	return 0
+
+'''
+Determine the regenerated LYA at a given day
+The current regeneration function is:
+	regenerated = standard + max(0, 1 - (a * pretx + b) * day^2 + (c * pretx + d) * day^2
+Parameters:
+	pretx - The Pre-Tx LYA in cells/L * 1e9
+	day - The measurement day
+	standard - The standard cell regeneration rate
+	a, b, c, d - The coefficients given above
+Returns:
+	The LYA increase due to regeneration, due to release from lymphoid organs and
+	standard cell regeneration
+'''
+def regeneration_curve(pretx, day, standard=0, a=1, b=1, c=1, d=1):
+	return standard + max(0, 1 - (a * pretx + b) * day * day + day + (c * pretx + d))
+
+'''
+Determine the killed LYA at a given day
+The current function is:
+	killed = pretx * percent * max(0, 1 - (a * pretx + b) * day^2)
+	This should be refined
+Parameters:
+	percent - The kill percent at day = infinity
+	pretx - The Pre-Tx LYA in cells/L * 1e9
+	day - The measurement day
+	a, b - The coefficients given above
+'''
+def killed_LYA_day(percent, pretx, day, a=1, b=1):
+	return pretx * percent * max(0, 1 - (a * pretx + b) * day * day)
+
+'''
+Determine total post-treatment LYA level, including regeneration
+posttx = pretx * (1 - kill_percent(day)) 
+	+ regeneration(pretx, day) 
+	- natural_cell_death(pretx, day)
+
+Parameters:
+	counts, edges - A histogram of the blood matrix
+	pretx - The Pre-Tx LYA in cells/L * 1e9
+	day - The measurement day
+Return:
+	A Post-Tx LYA estimate
+'''
+def post_treatment_LYA(counts, edges, pretx, day):
+	percent = calc_kill_frac(counts, edges)
+	return pretx - killed_LYA_day(percent, pretx, day) + 
+		regeneration_curve(pretx, day) - 
+		natural_cell_death(pretx, day)
+	
 if __name__=='__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('directory', type=str, help='The patient directory to look in')
