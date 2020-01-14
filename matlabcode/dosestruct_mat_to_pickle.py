@@ -63,6 +63,18 @@ def get_cell_kill_histograms(dose):
 	df.insert(len(df.columns), 'Total Kill', np.sum(kills, axis=1))
 	return df
 
+def get_dose_histograms(dose):
+	counts = []
+	bnds = []
+	for i in range(len(dose)):
+		counts.append(dose['BinCounts'][i] / dose['TotalVoxels'][i])
+	bnds = np.array(dose['BinLowerBounds'][0])
+	counts = np.array(counts)
+	df = pd.DataFrame({'Name': dose['Name']})
+	for i, lb in enumerate(bnds):
+		df.insert(len(df.columns), 'Percent %g Gy' % lb, counts[:, i])
+	return df
+
 if __name__=='__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('matfile', type=str)
@@ -78,6 +90,8 @@ if __name__=='__main__':
 	kill_hists = get_cell_kill_histograms(dose)
 	print(kill_hists)
 	kill_hists.to_csv('../data/cell_kill_histograms.csv')
+
+	get_dose_histograms(dose).to_csv('../data/dose_histograms.csv')
 
 	if len(args.replenish) > 0:
 		replenish = loadmat(args.replenish)
