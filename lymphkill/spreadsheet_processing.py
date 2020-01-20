@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib
 import argparse
 
 '''
@@ -40,6 +41,32 @@ def get_all_subsets(df):
 	dct['TV 40-60'] = df.loc[(df['Tumor Volume (cc)'] >= 40) & (df['Tumor Volume (cc)'] < 60)]
 	dct['TV > 60'] = df.loc[df['Tumor Volume (cc)'] >= 60]
 	return dct
+
+'''
+Replace the dose fraction info from df with more detailed dose histogram info from doses
+Parameters:
+	df - DataFrame containing basic spreadsheet info
+	doses - DataFrame containing more detailed dose histogram info
+Returns:
+	Merged dataframe
+'''
+def merge_spreadsheets(df, doses):
+	ret = df.copy()
+	count = 0
+	colheaders = [col for col in doses.columns if 'Percent' in col]
+	toadd = np.zeros([len(df), len(colheaders)])
+	for i, drow in doses.iterrows():
+		pat = drow['Name']
+		row = ret.loc[ret['Patient'] == pat]
+		if len(row.index) == 0:
+			continue
+		idx = row.index[0]
+		toadd[idx, :] = drow[colheaders].as_matrix()
+
+	for i, ch in enumerate(colheaders):
+		ret.insert(len(df.columns), ch, toadd[:, i])
+
+	return ret
 
 '''
 Print the average blood fraction receiving each dose
@@ -88,23 +115,71 @@ Parameters:
 	dct - The dictionary of subsets from get_all_subsets
 	subsets - The subset keys to plot
 '''
-def get_accuracy_plot(dct, subsets):
+def get_accuracy_plot(dct, subsets, models=['FLQ'], labels=None):
 	fig = plt.figure()
 	max_x = 0
+	headers = ['Predicted KP (%s)' % model for model in models]
+	eheaders = ['Error (%s)' % model for model in models]
+
+	i = 0
 	for subset in subsets:
 		df = dct[subset]
-		post_tx = df['Pre-Tx LYA'] * (1 - df['Predicted KP (FLQ)'])
-		diff = post_tx - df['Post-Tx LYA']
-		max_x = np.max(df['Pre-Tx LYA'])
-		error = df['Pre-Tx LYA'] * df['Error (FLQ)']
-		plt.errorbar(df['Pre-Tx LYA'], diff, yerr=error, fmt='o', label=subset)
+		for md, hd, ehd in zip(models, headers, eheaders):
+			post_tx = df['Pre-Tx LYA'] * (1 - df[hd])
+			diff = post_tx - df['Post-Tx LYA']
+			max_x = np.max(df['Pre-Tx LYA'])
+			error = df['Pre-Tx LYA'] * df[ehd]
+			plt.errorbar(df['Pre-Tx LYA'], diff, yerr=error, fmt='o', 
+				label='%s-%s' % (subset, md) if labels is None else labels[i])
+			i += 1
 	plt.plot([0, max_x*1.1], [0, 0], color='black')
 	plt.xlim([0, max_x*1.1])
 	plt.xlabel(r'Pre-Treatment LYA (cells/L x $10^9$)')
 	plt.ylabel(r'LYA difference (Simulated vs. Measured) (cells/L x $10^9$')
-	if len(subsets) > 1:
+	if i > 1:
 		plt.legend()
 	plt.show()
+
+def accuracy_barplot(ax, dct, subsets, labels=None, xlabel=None, percent=True):
+	diffs = np.zeros(len(subsets))
+	errs = np.zeros(len(subsets))
+	for i, subset in enumerate(subsets):
+		df = dct[subset]
+		post_tx = df['Pre-Tx LYA'] * (1 - df['Predicted KP (FLQ)'])
+		diff = np.abs(post_tx - df['Post-Tx LYA'])
+		if percent:
+			diffs[i] = np.mean(diff / df['Pre-Tx LYA']) * 100
+			errs[i] = np.std(diff / df['Pre-Tx LYA']) * 100
+		else:
+			diffs[i] = np.mean(diff)
+			errs[i] = np.std(diff)
+	ax.bar(np.arange(len(subsets)), diffs, yerr=errs, tick_label=subsets if labels is None else labels)
+	if xlabel is not None:
+		ax.set_xlabel(xlabel)
+
+def dose_areaplot(ax, dct, subsets, xlim=None, labels=None, legend=True, title=None):
+	xs = None
+	ys = []
+	for i, subset in enumerate(subsets):
+		df = dct[subset]
+		chs = [col for col in df.columns if 'Percent' in col]
+		dfracs = df[chs]
+		avgfrac = dfracs.mean().values
+		xvals = [float(col[len('Percent '):-len('Gy')]) for col in chs]
+		xs = xvals
+		ys.append(avgfrac)
+		#ax.plot(xvals, avgfrac, label=subset)
+		ax.fill_between(xvals, 0, avgfrac, label=subset if labels is None else labels[i], alpha=0.7)
+	
+	#ax.stackplot(xs, ys, labels=subsets if labels is None else labels)
+	if xlim is not None:
+		ax.set_xlim(xlim)
+	ax.set_xlabel('Dose (Gy)')
+	if legend:
+		ax.legend()
+	if title is not None:
+		ax.set_title(title)
+
 
 '''
 The spreadsheet has the following columns:
@@ -139,18 +214,20 @@ The spreadsheet has the following columns:
 if __name__=='__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('spreadsheet', type=str, help='Path to spreadsheet')
+	parser.add_argument('-d', '--dosesheet', type=str, default=None)
 	args = parser.parse_args()
 
 	df = pd.read_csv(args.spreadsheet)
 	df['RTOG'] = pd.to_numeric(df['RTOG'], errors='coerce')
 	df['Tumor Volume (cc)'] = pd.to_numeric(df['Tumor Volume (cc)'], errors='coerce')
 
+	if args.dosesheet is not None:
+		df = merge_spreadsheets(df, pd.read_csv(args.dosesheet))	
+		print(df.columns)
+		print(df)
+
 	subsets = get_all_subsets(df)
 	for subset in subsets:
 		print('%s\tN=%d' % (subset, len(subsets[subset])))
 		get_average_fractions(subsets[subset])
-		get_accuracy_info(subsets[subset])
-	get_accuracy_plot(subsets, ['All'])
-	get_accuracy_plot(subsets, [s for s in subsets if 'Gated' in s])
-	get_accuracy_plot(subsets, [s for s in subsets if 'TV' in s])
-	get_accuracy_plot(subsets, [s for s in subsets if 'DT' in s])
+		#get_accuracy_info(subsets[subset])

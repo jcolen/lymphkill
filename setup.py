@@ -9,6 +9,7 @@ setup(
 	author_email='jcolen19@gmail.com',
 	url='https://github.com/jcolen/lymphkill',
 	install_requires=['numpy',
+					  'scipy',
 					  'matplotlib',
 					  'pickle',
 					  'functools',

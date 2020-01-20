@@ -181,6 +181,7 @@ def calc_blood_dose(masks, time_per_beam, dosegrids,
 if __name__=='__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('directory', type=str, help='The patient directory to look in')
+	parser.add_argument('--gated', action='store_true', help='Gated treatment plan')
 	args = parser.parse_args()
 	
 	dcm_directory = find_dicom_directory(args.directory)
@@ -192,7 +193,7 @@ if __name__=='__main__':
 
 	total_mu, active_beams, time_per_beam = get_beam_info(args.directory)
 
-	blood_voxels = calc_blood_dose(masks, time_per_beam, dosegrids)
+	blood_voxels = calc_blood_dose(masks, time_per_beam, dosegrids, gated=args.gated)
 	print('Done calculating blood')
 
 	bin_counts, bin_edges = np.histogram(blood_voxels, 
