@@ -8,7 +8,7 @@ import numpy as np
 from sys import exit
 
 from lymphkill.calc_blood_dose import calc_blood_dose
-from lymphkill.calc_blood_kill import calc_kill_frac
+from lymphkill.calc_blood_kill import calc_kill_frac, regeneration, replenish_const, replenish_variable
 from lymphkill.file_utils import find_dicom_directory, find_prefixed_file, find_prefixed_files, load_rtdose_files
 from lymphkill.mask_generation import mask_generation
 from lymphkill.plan_info import get_beam_info
@@ -18,6 +18,10 @@ from lymphkill.structure_loading import load_structures
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('directory', type=str)
+	parser.add_argument('--gated', action='store_true', help='Gated treatment plan')
+	parser.add_argument('-d', '--day', type=int, nargs='+', default=[5, 30, 180], 
+		help='Measurement day(s)')
+	parser.add_argument('-p', '--pretx', type=float, default=None, help='Pre Treatment LYA')
 
 	args = parser.parse_args()
 
@@ -57,7 +61,7 @@ if __name__ == '__main__':
 	
 	rtdose_files = find_prefixed_files(dcm_directory, 'RTDOSE')
 	dosegrids = load_rtdose_files(rtdose_files)
-	blood_voxels = calc_blood_dose(masks, time_per_beam, dosegrids)
+	blood_voxels = calc_blood_dose(masks, time_per_beam, dosegrids, gated=args.gated)
 
 	counts, edges = np.histogram(blood_voxels,
 		bins=np.arange(0, np.max(blood_voxels)+0.1, 0.1))
@@ -67,5 +71,12 @@ if __name__ == '__main__':
 	with open(os.path.join(args.directory, 'blood_dose.pickle'), 'wb') as outfile:
 		pickle.dump(blood_voxels, outfile)
 	
-	percent = calc_kill_frac(counts, edges)
-	print('Total Percent Kill:\t%g' % percent)
+	if args.pretx is None:
+		regenRate = replenish_const 
+	else:
+		ridx = np.argwhere(replenish_variable[:, 0] < args.pretx)[-1]
+		regenRate = replenish_variable[ridx, 1]
+	
+	for day in args.day:
+		percent = regeneration(percent, regenRate, day=day)
+		print('Percent Kill after %d Days:\t%g' % (day, percent))

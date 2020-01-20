@@ -3,16 +3,27 @@
 import os
 import pickle
 import argparse
-
-from lymphkill.calc_blood_kill import calc_kill_frac, regeneration
+import numpy as np
+from lymphkill.calc_blood_kill import calc_kill_frac, regeneration, replenish_const, replenish_variable
 
 if __name__=='__main__':
 	parser = argparse.ArgumentParser('Blood kill calculation. Requires blood dose')
 	parser.add_argument('directory', type=str, help='The patient directory to look in')
+	parser.add_argument('-d', '--day', type=int, nargs='+', default=[5, 30, 180], 
+		help='Measurement day(s)')
+	parser.add_argument('-p', '--pretx', type=float, default=None, help='Pre Treatment LYA')
 	args = parser.parse_args()
 	
 	with open(os.path.join(args.directory, 'blood_hist.pickle'), 'rb') as infile:
 		counts, edges = pickle.load(infile)
 	percent = calc_kill_frac(counts, edges)
-	percent = regeneration(percent, 0.001, day=25)
-	print('Total Percent Kill:\t%g' % percent)
+	
+	if args.pretx is None:
+		regenRate = replenish_const 
+	else:
+		ridx = np.argwhere(replenish_variable[:, 0] < args.pretx)[-1]
+		regenRate = replenish_variable[ridx, 1]
+	
+	for day in args.day:
+		percent = regeneration(percent, regenRate, day=day)
+		print('Percent Kill after %d Days:\t%g' % (day, percent))

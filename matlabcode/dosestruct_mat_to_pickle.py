@@ -80,7 +80,7 @@ if __name__=='__main__':
 	parser.add_argument('matfile', type=str)
 	parser.add_argument('-r', '--replenish', type=str, default='')
 	args = parser.parse_args()
-
+	
 	dosemat = loadmat(args.matfile)
 	dose = process_dosestruct(dosemat)
 	print(dose)
@@ -92,7 +92,7 @@ if __name__=='__main__':
 	kill_hists.to_csv('../data/cell_kill_histograms.csv')
 
 	get_dose_histograms(dose).to_csv('../data/dose_histograms.csv')
-
+	
 	if len(args.replenish) > 0:
 		replenish = loadmat(args.replenish)
 		rep_py = process_replenish(replenish)

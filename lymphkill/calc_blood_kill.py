@@ -4,6 +4,14 @@ import os
 import numpy as np
 import argparse
 
+replenish_variable = np.array([
+	[0.5, 0.0025],
+	[1.0, 0.0014],
+	[1.5, 0.0004],
+	[2.0, -0.0005]])
+
+replenish_const = 0.0006
+
 '''
 Calculate alpha and beta for the fractionated LQ model
 Parameters:
@@ -120,17 +128,28 @@ Return:
 '''
 def post_treatment_LYA(counts, edges, pretx, day):
 	percent = calc_kill_frac(counts, edges)
-	return pretx - killed_LYA_day(percent, pretx, day) + 
-		regeneration_curve(pretx, day) - 
+	return pretx - killed_LYA_day(percent, pretx, day) + \
+		regeneration_curve(pretx, day) - \
 		natural_cell_death(pretx, day)
 	
 if __name__=='__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('directory', type=str, help='The patient directory to look in')
+	parser.add_argument('-d', '--day', type=int, nargs='+', default=[5, 30, 180], 
+		help='Measurement day(s)')
+	parser.add_argument('-p', '--pretx', type=float, default=None, help='Pre Treatment LYA')
 	args = parser.parse_args()
 	
 	with open(os.path.join(args.directory, 'blood_hist.pickle'), 'rb') as infile:
 		counts, edges = pickle.load(infile)
 	percent = calc_kill_frac(counts, edges)
-	percent = regeneration(percent, 0.001, day=25)
-	print('Total Percent Kill:\t%g' % percent)
+
+	if args.pretx is None:
+		regenRate = replenish_const 
+	else:
+		ridx = np.argwhere(replenish_variable[:, 0] < args.pretx)[-1]
+		regenRate = replenish_variable[ridx, 1]
+	
+	for day in args.day:
+		percent = regeneration(percent, regenRate, day=day)
+		print('Percent Kill after %d Days:\t%g' % (day, percent))
