@@ -3,8 +3,5 @@ data
 *.pyc
 python/__pycache__
 build
-<<<<<<< HEAD
 manuscripts
-=======
 manuscript
->>>>>>> 9ac596d9eb60bd655d68a466006410aea91cacd8
