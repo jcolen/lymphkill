@@ -153,8 +153,9 @@ def mask_generation(
 
 	masks = []
 	other_organs_ind = -1
+	idx = 0
 	used_voxels = None
-	for i, dct in enumerate(mask_dicts):
+	for dct in mask_dicts:
 		contour_idx = find_matching_contour_idx(contours, dct['NameStrings'])
 		if contour_idx < 0:
 			continue
@@ -175,14 +176,15 @@ def mask_generation(
 		mdict['LayerSize'] = layer_size(mdict['Mask'])
 		masks.append(mdict)
 
-		if masks[i]['CardiacOutput'] == -1:
-			other_organs_ind = i
+		if masks[idx]['CardiacOutput'] == -1:
+			other_organs_ind = idx
 		else:
 			if used_voxels is None:
-				used_voxels = np.copy(masks[i]['Mask'])
+				used_voxels = np.copy(masks[idx]['Mask'])
 			else:
-				used_voxels = np.logical_or(used_voxels, masks[i]['Mask'])
-	
+				used_voxels = np.logical_or(used_voxels, masks[idx]['Mask'])
+		idx += 1
+
 	#Now remove duplicated voxels in other organs
 	if other_organs_ind != -1:
 		masks[other_organs_ind]['Mask'] = np.logical_and(
