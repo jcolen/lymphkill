@@ -65,6 +65,8 @@ if __name__ == '__main__':
 
 	counts, edges = np.histogram(blood_voxels,
 		bins=np.arange(0, np.max(blood_voxels)+0.1, 0.1))
+
+	percent = calc_kill_frac(counts, edges)
 	
 	with open(os.path.join(args.directory, 'blood_hist.pickle'), 'wb') as outfile:
 		pickle.dump((counts, edges), outfile)
