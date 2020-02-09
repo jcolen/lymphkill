@@ -70,7 +70,10 @@ if __name__ == '__main__':
 		pickle.dump((counts, edges), outfile)
 	with open(os.path.join(args.directory, 'blood_dose.pickle'), 'wb') as outfile:
 		pickle.dump(blood_voxels, outfile)
-	
+
+	percent = calc_kill_frac(counts, edges)
+	print('Total Percent Kill (No Regeneration):\t%g' % percent)
+
 	if args.pretx is None:
 		regenRate = replenish_const 
 	else:
