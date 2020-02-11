@@ -12,7 +12,7 @@ Returns:
 '''
 def get_beam_info(directory):
 	dcm_directory = find_dicom_directory(directory)
-	rtplan_file = find_prefixed_file(dcm_directory, 'RTPLAN')
+	rtplan_file = find_prefixed_file(dcm_directory, 'RP')
 	rtplan = pydicom.dcmread(rtplan_file)
 
 	total_mu = 0

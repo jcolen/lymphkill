@@ -1,0 +1,6 @@
+lymphkill/file_utils.py
+-Seems to be util for searching and returning file_utils
+-find_prefixed_files(dir, prefix) => finding files by prefix
+-find_dicom_directory(dir) => finding directory containing DICOM files
+-load_rtdose_files(files) => converts rtdose files to list of dose grids
+

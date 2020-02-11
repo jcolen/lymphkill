@@ -1,0 +1,34 @@
+lymphkill/structure_loading.py
+-Uses file_utils for various data loading methods
+
+load_dicom_imageheaders(dir, id) =>
+    reads DICOM (CT) files and fetches/returns list of image headers
+
+build_affine_transformation(headers) =>
+    transforms image headers data into voxel points (data points in 3D space)
+    involves a linear matrix transformation, returns the matrix a
+
+load_structures(dir) =>
+    reads rtstruct files for rtstruct, passed to load_dicom_imageheaders(dir, rtstruct.studyid)
+    prints organs found in rtstruct.structureset
+    calls read_structures(rstruct, imageheaders from 12)
+
+read_structures(rtstruct, imageheaders) =>
+    calls build_affine_transformation(imageheaders)
+    gets dimensions of imageheaders, intializes contours size
+    for the length of the contour sequence
+        get the contour, read its data
+        make some sort of lattice/binary image
+        store image in dictionary 
+    stack images from dictionary to make 'VoxPoints' attribute of contours
+    return contours (dictionary containing name, VoxPoints, segmentation)
+
+
+ORDER/SUMMARY 
+find_dicom_directory => get DICOM image directory 
+load_structures 
+    -> load_dicom_imageheaders 
+    -> read_structures 
+        -> build_affine_transformation + math
+
+    print & dump contours into contours.pickle

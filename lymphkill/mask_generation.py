@@ -203,7 +203,7 @@ if __name__=='__main__':
 	try:
 		dcm_directory = find_dicom_directory(args.directory)
 		ct_prefix = 'CT'
-		dose_prefix = 'RTDOSE'
+		dose_prefix = 'RD'
 		
 		ct_infos = [pydicom.dcmread(f) for f in find_prefixed_files(dcm_directory, ct_prefix)]
 		dose_info = pydicom.dcmread(find_prefixed_file(dcm_directory, dose_prefix))

@@ -1,0 +1,30 @@
+lymphkill/mask_generation
+-Uses contours generated from structure_loading and CT, Dose files to build the mask_generation
+
+get_first_CT_frame(ct_infos)
+    get first z-oriented slice from CT file
+
+get_conversion_grids(ct_info, dose_info, dim_vol, dim_dos)
+    do some fancy math to  onvert between CT and Dose dimensions
+
+find_matching_contour_idx(contours, name_strings)
+    finds the index for a given organ in the contours structure by searching name_strings
+
+layer_size(mask)
+    calculate the size of the layer at the passed in mask
+
+def mask_generation(contours, ct_infos, dose_info, mask_dicts)
+
+    call get_first_CT_frame(ct_infos)
+    get dimensions of CT and Dose files
+    call get_conversion_grids
+    loop over mask_dicts (which is list of dictionary objects describing organs)
+        call find_matching_contour_idx
+        initialize empty mdict and set the name, organ, cardiac output to mask_dict[i] value
+        set the mdict[mask] to dose dimensions and segment of the found contour idx
+        mdict[layersize] = layer_size(mdict[mask])
+        masks.append(mdict)
+    
+    dump masks into masks.pickle
+    return masks
+    

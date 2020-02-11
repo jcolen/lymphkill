@@ -41,7 +41,7 @@ if __name__ == '__main__':
 	
 	try:
 		ct_infos = [pydicom.dcmread(f) for f in find_prefixed_files(dcm_directory, 'CT')]
-		dose_info = pydicom.dcmread(find_prefixed_file(dcm_directory, 'RTDOSE'))
+		dose_info = pydicom.dcmread(find_prefixed_file(dcm_directory, 'RD'))
 	except Exception as ex:
 		print(type(ex), ex)
 		print('Could not load in ct/dose info')
@@ -59,7 +59,7 @@ if __name__ == '__main__':
 	print('Total MU: %d\nActive Beams: %d\nTime Per Beam: %g' % \
 		(total_mu, active_beams, time_per_beam))
 	
-	rtdose_files = find_prefixed_files(dcm_directory, 'RTDOSE')
+	rtdose_files = find_prefixed_files(dcm_directory, 'RD')
 	dosegrids = load_rtdose_files(rtdose_files)
 	blood_voxels = calc_blood_dose(masks, time_per_beam, dosegrids, gated=args.gated)
 
