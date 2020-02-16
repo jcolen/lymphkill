@@ -24,8 +24,8 @@ def calc_alpha_beta_frac(k05, fracs):
 	x1 = 5.
 	x2 = 0.5
 	k1 = 0.992
-	beta = fracs / (x2 - x1) * (np.log(1 - k1) / x1 - np.log(1 - k05) / x2)
-	alpha = -np.log(1 - k1) / x1 - beta * x1 / fracs
+	beta = 1 / (fracs * (x1 - x2)) * (np.log(1 - k05) / x2 - np.log( 1 - k1) / x1)
+	alpha = -np.log(1 - k1) / (fracs * x1) - beta * x1
 	return alpha, beta
 
 '''
