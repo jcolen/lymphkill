@@ -157,7 +157,7 @@ Returns:
 	contours - A dictionary containing organ information
 		keys: ROIName, Points, VoxPoints, Segmentation
 '''
-def load_structures(directory, struct_prefix='RS'):
+def load_structures(directory, struct_prefix='RTSTRUCT'):
 	rtstruct_file = find_prefixed_file(directory, struct_prefix)
 	rtstruct = pydicom.dcmread(rtstruct_file)
 	imageheaders = load_dicom_imageheaders(directory, rtstruct.StudyInstanceUID)

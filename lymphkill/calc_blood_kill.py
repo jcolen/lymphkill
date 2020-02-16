@@ -151,5 +151,6 @@ if __name__=='__main__':
 		regenRate = replenish_variable[ridx, 1]
 	
 	for day in args.day:
+		#regenRate = -0.0090
 		percent = regeneration(percent, regenRate, day=day)
 		print('Percent Kill after %d Days:\t%g' % (day, percent))

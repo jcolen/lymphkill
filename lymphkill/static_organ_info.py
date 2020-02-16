@@ -88,7 +88,7 @@ Parameters:
 '''
 def get_static_dose_info(directory, patientname=None, dosechecks=[5, 10, 15, 20]):
 	dcm_directory = find_dicom_directory(directory)
-	rtdose_files = find_prefixed_files(dcm_directory, 'RD')
+	rtdose_files = find_prefixed_files(dcm_directory, 'RTDOSE')
 	dosegrids = load_rtdose_files(rtdose_files)
 	voxelsize = get_voxel_size(rtdose_files[0])
 

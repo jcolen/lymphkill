@@ -14,6 +14,7 @@ basic_mask_dicts = [
 	{'NameStrings': ['pa'], 'GV': True, 'Stationary': False, 'CardiacOutput': 1.},
 	{'NameStrings': ['vc'], 'GV': True, 'Stationary': False, 'CardiacOutput': 1.},
 	{'NameStrings': ['thoracic', 'spine'], 'GV': False, 'Stationary': True, 'CardiacOutput': 0.},
+	{'NameStrings': ['heart'], 'GV': True, 'Stationary': False, 'CardiacOutput': 1.},
 ]
 
 '''
@@ -203,7 +204,7 @@ if __name__=='__main__':
 	try:
 		dcm_directory = find_dicom_directory(args.directory)
 		ct_prefix = 'CT'
-		dose_prefix = 'RD'
+		dose_prefix = 'RTDOSE'
 		
 		ct_infos = [pydicom.dcmread(f) for f in find_prefixed_files(dcm_directory, ct_prefix)]
 		dose_info = pydicom.dcmread(find_prefixed_file(dcm_directory, dose_prefix))

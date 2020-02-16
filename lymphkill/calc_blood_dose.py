@@ -185,7 +185,7 @@ if __name__=='__main__':
 	args = parser.parse_args()
 	
 	dcm_directory = find_dicom_directory(args.directory)
-	rtdose_files = find_prefixed_files(dcm_directory, 'RD')
+	rtdose_files = find_prefixed_files(dcm_directory, 'RTDOSE')
 	dosegrids = load_rtdose_files(rtdose_files)
 
 	with open(os.path.join(args.directory, 'masks.pickle'), 'rb') as infile:
