@@ -1,6 +1,8 @@
 # Blood Dose and Lymphocyte Kill Simulation
 
-This is a repository containing the code referenced in \<CITE PAPER UPON SUBMISSION\>. The folder `matlabcode` the matlab scripts which were used for the original run of code. The folder `lymphkill` contains those same scripts but rewritten in Python with the goal of readability and better code structure. 
+This is a repository containing code originally written to compute the absorbed dose to circulating lymphocytes during ratdiation therapy treatments and predict radiation-induced immune suppression (RIIS). ***This is a preliminary version of the code!*** The final version, used in the manuscript [Predicting radiation-induced immune suppression in lung cancer patients treated with stereotactic body radiation therapy](https://aapm.onlinelibrary.wiley.com/doi/full/10.1002/mp.17181) is maintained by Cam Nguyen.
+
+The repo contains three folders. The folder `lymphkill` contains Python code for processing and analyzing patient treatment plan information. The folder `matlabcode` contains MATLAB scripts which were used for the original implementation of this project and are preserved here for the sake of completeness. 
 
 The Python code requires the following libraries to be installed:
 - numpy
@@ -15,7 +17,7 @@ They will be installed automatically with running:
 
 `python setup.py install`
 
-Because the goal is to replace all Matlab scripts with Python, we will not outline the structure of the Matlab code. The python source files are loacted in the `lymphkill` subdirectory. The scripts, which can be run standalone from the command line, are located in the `scripts` subdirectory, and are installed with `setup.py`. They are:
+The Python source files are located in the `lymphkill` subdirectory. The scripts, which can be run standalone from the command line, are located in the `scripts` subdirectory, and are installed with `setup.py`. They are:
 - `calc_blood_dose` - Calculation of the dose absorbed by blood during a treatment
   - Output stored in `blood_dose.pickle`, `blood_hist.pickle`
 - `calc_blood_kill` - Calculation of the blood cell kill, given the absorbed dose
